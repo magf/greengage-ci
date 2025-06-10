@@ -1,0 +1,103 @@
+name: Greengage Reusable Docker Build Workflow
+env:
+  CI_REPO: magf/greengage-ci
+  CI_PATH: .ci
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version derived from tag (e.g., 6 or 7)'
+        required: true
+        type: string
+      target_os:
+        description: 'Target OS for build'
+        required: true
+        type: string
+      target_os_version:
+        description: 'Target OS version'
+        required: true
+        type: string
+      python3:
+        description: 'Python3 build argument'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      ghcr_token:
+        description: 'GitHub token for GHCR access'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # runs-on: docker
+    # container:
+    #   image: docker:dind
+    #   options: --privileged
+    steps:
+      - name: Checkout Greengage repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          submodules: recursive
+          fetch-depth: 0
+      - name: Create CI directory
+        run: mkdir -p ${{ env.CI_PATH }}
+      - name: Checkout remote CI repo
+        id: checkout_remote_ci
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ env.CI_REPO }}
+          path: ${{ env.CI_PATH }}
+      - name: Fallback to ci directory if remote fails
+        if: steps.checkout_remote_ci.outcome != 'success'
+        run: |
+          if [ -d "ci" ]; then
+            ln -s $(pwd)/ci ${{ env.CI_PATH }}
+          else
+            echo "Error: Neither remote CI repo (${{ env.CI_REPO }}) nor local ci directory found, cannot proceed."
+            exit 1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Start Docker daemon
+      #   run: |
+      #     dockerd &
+      #     sleep 5  # Wait for dockerd to start
+      - name: Build and push base image
+        run: |
+          BASE_IMAGE_TAG=ghcr.io/${{ github.repository }}/ggdb${{ inputs.version }}-base:${{ inputs.target_os }}${{ inputs.target_os_version }}
+          docker pull $BASE_IMAGE_TAG || true
+          docker build --tag $BASE_IMAGE_TAG --push --cache-from $BASE_IMAGE_TAG - < ci/Dockerfile.${{ inputs.target_os }}${{ inputs.target_os_version }}
+      - name: Determine final image tag
+        id: set_tag
+        run: |
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null | tr '/' '_')
+          echo "release_tag=$TAG" >> $GITHUB_OUTPUT
+          if [[ ! "${{ github.ref }}" =~ ^refs/tags/ ]]; then
+            TAG=$TAG-$(date '+%Y%m%d%H%M')
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      - name: Build and push final image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/ggdb${{ inputs.version }}_${{ inputs.target_os }}${{ inputs.target_os_version }}
+          RELEASE_IMAGE_TAG=$IMAGE:${{ steps.set_tag.outputs.release_tag }}
+          FINAL_IMAGE_TAG=$IMAGE:${{ steps.set_tag.outputs.tag }}
+          docker pull $RELEASE_IMAGE_TAG || true
+          docker build --push --tag $FINAL_IMAGE_TAG \
+            --build-arg PYTHON3=${{ inputs.python3 }} \
+            --build-arg REPO=${{ github.repository }} \
+            --build-arg TARGET_OS=${{ inputs.target_os }} \
+            --build-arg TARGET_OS_VERSION=${{ inputs.target_os_version }} \
+            --cache-from $RELEASE_IMAGE_TAG \
+            .
+          if [ "$RELEASE_IMAGE_TAG" == "$FINAL_IMAGE_TAG" ]; then
+            docker tag $FINAL_IMAGE_TAG $IMAGE:latest
+            docker push $IMAGE:latest
+          fi
