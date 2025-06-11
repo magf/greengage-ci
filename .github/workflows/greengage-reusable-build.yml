@@ -22,6 +22,10 @@ on:
         required: false
         type: string
         default: ''
+      ref:
+        description: 'Branch or ref to checkout'
+        required: false
+        type: string
     secrets:
       ghcr_token:
         description: 'GitHub token for GHCR access'
@@ -30,15 +34,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # runs-on: docker
-    # container:
-    #   image: docker:dind
-    #   options: --privileged
     steps:
       - name: Checkout Greengage repo
+        if: ${{ inputs.ref == '' }}
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
+          submodules: recursive
+          fetch-depth: 0
+      - name: Checkout specified ref
+        if: ${{ inputs.ref != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ inputs.ref }}
           submodules: recursive
           fetch-depth: 0
       - name: Create CI directory
@@ -66,10 +75,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # - name: Start Docker daemon
-      #   run: |
-      #     dockerd &
-      #     sleep 5  # Wait for dockerd to start
       - name: Build and push base image
         run: |
           BASE_IMAGE_TAG=ghcr.io/${{ github.repository }}/ggdb${{ inputs.version }}-base:${{ inputs.target_os }}${{ inputs.target_os_version }}
