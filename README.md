@@ -13,14 +13,14 @@ This reusable GitHub Actions workflow, maintained by **GreenData**, automates th
 - Automatic tagging strategy
 - CI repository fallback mechanism
 
-The `manual_build.yml` workflow allows manual triggering with a user-friendly interface to select the target branch and OS, ensuring compatibility and streamlined builds.
-The `manual_build.yml` shoul be placed in target repositor at `.github/workflows/greengage-build-manual.yml`.
+The `greengage-build-manual.yml` workflow allows manual triggering with a user-friendly interface to select the target branch and OS, ensuring compatibility and streamlined builds.
+The `greengage-build-manual.yml` shoul be placed in target repositor at `.github/workflows/greengage-build-manual.yml`.
 
 ## Usage
 
 ### Manual Build Workflow
 
-The `manual_build.yml` workflow is designed for manual execution via GitHub Actions' `workflow_dispatch`. It determines the Greengage version based on the selected branch and validates OS compatibility.
+The `greengage-build-manual.yml` workflow is designed for manual execution via GitHub Actions' `workflow_dispatch`. It determines the Greengage version based on the selected branch and validates OS compatibility.
 
 #### Input Parameters
 
@@ -48,7 +48,7 @@ The `manual_build.yml` workflow is designed for manual execution via GitHub Acti
 
 #### Example Implementation
 
-To trigger a manual build, use the following configuration in `.github/workflows/manual_build.yml` within the `GreengageDB/greengage` repository:
+To trigger a manual build, use the following configuration in `.github/workflows/greengage-build-manual.yml` within the `GreengageDB/greengage` repository:
 
 ```yaml
 name: Greengage Manual Build
