@@ -42,6 +42,9 @@ jobs:
       - name: Maximize disk space
         uses: greengagedb/greengage-ci/.github/actions/maximize-disk-space@v19
 
+      - name: Enable Docker IPv6
+        uses: greengagedb/greengage-ci/.github/actions/enable-docker-ipv6@v51
+
       # Checkout repository with shallow clone
       - name: Checkout Greengage repo
         uses: actions/checkout@v4
