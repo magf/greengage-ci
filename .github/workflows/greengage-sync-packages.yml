@@ -192,7 +192,7 @@ jobs:
           find downloaded-packages -type f
 
       - name: Publish to S3 repository
-        uses: greengagedb/greengage-ci/.github/actions/publish-to-s3-repo@v52
+        uses: ./.github/actions/publish-to-s3-repo
         with:
           packages_dir:          downloaded-packages
           extensions:            ${{ env.PACKAGE_EXTENSIONS }}
