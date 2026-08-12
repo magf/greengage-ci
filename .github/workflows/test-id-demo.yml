@@ -1,0 +1,48 @@
+# .github/workflows/test-id-demo.yml
+name: Test - id vs name for steps.outputs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  without-id:
+    name: "Without id: publish (matches current sync-packages.yml)"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish to S3 repository
+        # deliberately NO id, mirroring the current sync-packages.yml
+        uses: ./.github/actions/test-publish
+        with:
+          simulate_published: 'true'
+
+      - name: Check condition (same as install-test step)
+        run: |
+          echo "steps.publish.outputs.published = '${{ steps.publish.outputs.published }}'"
+          if [ "${{ steps.publish.outputs.published }}" == "true" ]; then
+            echo "RESULT: install-test WOULD run"
+          else
+            echo "RESULT: install-test would NOT run (condition empty/false)"
+          fi
+
+  with-id:
+    name: "With id: publish (fixed version)"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish to S3 repository
+        id: publish   # this is what's missing in the current workflow
+        uses: ./.github/actions/test-publish
+        with:
+          simulate_published: 'true'
+
+      - name: Check condition (same as install-test step)
+        run: |
+          echo "steps.publish.outputs.published = '${{ steps.publish.outputs.published }}'"
+          if [ "${{ steps.publish.outputs.published }}" == "true" ]; then
+            echo "RESULT: install-test WOULD run"
+          else
+            echo "RESULT: install-test would NOT run (condition empty/false)"
+          fi
+
+      - name: Should be skipped when already_published=true
+        if: steps.publish.outputs.published != 'true'
+        run: echo "check | this line must NOT print when simulate_published=true"
