@@ -1,0 +1,35 @@
+# .github/actions/test-publish/action.yml
+name: Test publish action
+description: >
+  Minimal copy of the pattern used in publish-to-s3-repo: two internal
+  steps (check/rebuild) with ids, final "published" output composed from
+  them. Publishes nothing for real - only simulates behavior to test id
+  wiring on the caller side.
+
+inputs:
+  simulate_published:
+    description: 'What the rebuild step should report: true or false'
+    required: false
+    default: 'true'
+
+outputs:
+  published:
+    description: '"true" if "published", "false" otherwise'
+    value: ${{ steps.check.outputs.already_published == 'true' && 'false' || steps.rebuild.outputs.published }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check (simulate already_published=false)
+      id: check
+      shell: bash
+      run: |
+        echo "already_published=false" >> "$GITHUB_OUTPUT"
+
+    - name: Rebuild (simulate published=${{ inputs.simulate_published }})
+      id: rebuild
+      shell: bash
+      env:
+        SIMULATE_PUBLISHED: ${{ inputs.simulate_published }}
+      run: |
+        echo "published=${SIMULATE_PUBLISHED}" >> "$GITHUB_OUTPUT"
